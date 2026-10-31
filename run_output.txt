@@ -1,0 +1,101 @@
+=== MODULE 1: BST vs AVL, heap, priority queue ===
+Sequential insert of 1000 signatures: BST height = 1000, AVL height = 10
+Insert comparisons: BST = 499500, AVL = 8977
+AVL rotations: LL=0 RR=990 LR=0 RL=0 (total 990)
+Search all 1000 keys: BST avg = 500.5 comparisons, AVL avg = 9.0 comparisons
+Timed 200,000 lookups: BST = 1164 ms, AVL = 29 ms
+Random-order insert: BST height = 22, AVL height = 12
+Top-5 critical alerts from the priority queue:
+   SIG-0007 | Rogue Engineering Workstation | freq=1   | CVSS=10.0
+   SIG-0045 | PLC Firmware Tampering     | freq=1   | CVSS=10.0
+   SIG-0518 | Rogue Engineering Workstation | freq=1   | CVSS=10.0
+   SIG-0633 | OPC-UA Session Hijack      | freq=1   | CVSS=10.0
+   SIG-0694 | Historian SQL Injection    | freq=1   | CVSS=10.0
+
+Module 1 tests:
+  [PASS] In-order traversal of BST is sorted by signature ID
+  [PASS] AVL in-order traversal is sorted
+  [PASS] Pre-order starts at the root and post-order ends at the root
+  [PASS] Duplicate signature merges into one node (size stays 1000)
+  [PASS] Frequency totals match in BST and AVL after 500 replayed alerts (1500)
+  [PASS] AVL stays balanced after sequential insert
+  [PASS] AVL height is within 1.44 log2(n)
+  [PASS] BST degenerates to a chain on sequential input (height = n)
+  [PASS] Search for a missing signature returns null in both trees
+  [PASS] LL, RR, LR and RL rotation cases all balance to the same root
+  [PASS] Heap sort output is in descending CVSS order
+  [PASS] Priority queue extracts in non-increasing CVSS order
+  [PASS] Top-5 query leaves the heap untouched (size 1000)
+
+=== MODULE 2: adjacency list, BFS, DFS, components ===
+Devices V = 15, links E = 21. Adjacency list entries = 42, adjacency matrix cells = 225
+BFS from Firewall: Firewall, Switch-Core, Historian, HMI-1, HMI-2, EngWS, Switch-Field, PLC-1, PLC-2, PLC-3, RTU-1, PLC-4
+Hop counts: Firewall=0, Switch-Core=1, Historian=2, HMI-1=2, HMI-2=2, EngWS=2, PLC-1=3, PLC-2=3, PLC-3=3, RTU-1=3, Switch-Field=2, PLC-4=3, RTU-2=-1, Gateway-R=-1, Sensor-Hub=-1
+DFS from Firewall: Firewall, Switch-Core, Historian, HMI-1, PLC-1, EngWS, PLC-3, Switch-Field, PLC-2, HMI-2, RTU-1, PLC-4
+Connected components: 2
+   Segment 1: Firewall, Switch-Core, Historian, HMI-1, PLC-1, EngWS, PLC-3, Switch-Field, PLC-2, HMI-2, RTU-1, PLC-4
+   Segment 2: RTU-2, Gateway-R, Sensor-Hub
+
+Module 2 tests:
+  [PASS] BFS and DFS reach the same set of devices from Firewall
+  [PASS] BFS reaches 12 devices (the plant segment)
+  [PASS] PLC-3 is exactly 3 hops from the Firewall
+  [PASS] Remote site devices are unreachable from the Firewall (hops = -1)
+  [PASS] Two connected components found (plant + remote site)
+  [PASS] Adjacency list uses fewer entries than the matrix
+
+=== MODULE 3: spanning trees and shortest paths ===
+Prim (plant) cost = 34 : [Firewall-Switch-Core(2), Switch-Core-HMI-1(2), Switch-Core-HMI-2(2), Switch-Core-Historian(3), Switch-Core-EngWS(4), Switch-Core-Switch-Field(5), Switch-Field-PLC-1(3), Switch-Field-PLC-2(4), Switch-Field-PLC-3(4), PLC-3-PLC-4(2), PLC-4-RTU-1(3)]
+Kruskal (forest) cost = 41 : [Firewall-Switch-Core(2), Switch-Core-HMI-1(2), Switch-Core-HMI-2(2), PLC-3-PLC-4(2), Switch-Core-Historian(3), PLC-1-Switch-Field(3), RTU-1-PLC-4(3), Gateway-R-Sensor-Hub(3), Switch-Core-EngWS(4), PLC-2-Switch-Field(4), PLC-3-Switch-Field(4), RTU-2-Gateway-R(4), Switch-Core-Switch-Field(5)]
+Cheapest attack path Firewall -> each PLC (Dijkstra):
+   PLC-1  cost 10  Firewall -> Switch-Core -> HMI-1 -> PLC-1
+   PLC-2  cost 11  Firewall -> Switch-Core -> HMI-2 -> PLC-2
+   PLC-3  cost 11  Firewall -> Switch-Core -> Switch-Field -> PLC-3
+   PLC-4  cost 12  Firewall -> Switch-Core -> Switch-Field -> PLC-4
+
+Module 3 tests:
+  [PASS] Prim (plant) + Prim (remote) equals Kruskal spanning forest cost
+  [PASS] Prim spanning tree for 12 plant devices has 11 links
+  [PASS] Kruskal forest has V - 2 = 13 links (two components)
+  [PASS] Dijkstra, Bellman-Ford and Floyd-Warshall agree for every device
+  [PASS] Bellman-Ford reports no negative cycle
+  [PASS] Floyd-Warshall distance matrix is symmetric (undirected links)
+  [PASS] Transitive closure matches Floyd-Warshall reachability
+  [PASS] Remote site has no path from the Firewall (distance = INF)
+
+=== MODULE 4: dynamic programming ===
+Knapsack (15 h budget): risk reduction = 88, hours used = 14
+   chosen: Segment network; Deploy IDS sensor; Rotate credentials; Disable unused ports; 
+LCS of attack pattern vs observed log: length 5 of 6 (83% match) -> [SCAN, AUTH_FAIL, AUTH_OK, MODBUS_WRITE, LOG_CLEAR]
+Matrix chain: optimal = 15125 multiplications ((A1 x (A2 x A3)) x ((A4 x A5) x A6)), left-to-right = 40500
+Resource allocation (6 analyst units, 3 zones): best = 54, units = [2, 2, 2]
+
+Module 4 tests:
+  [PASS] Knapsack result equals brute force over all 2^7 subsets (88)
+  [PASS] Knapsack never exceeds the 15 hour budget
+  [PASS] LCS length is 5 (SCAN, AUTH_FAIL, AUTH_OK, MODBUS_WRITE, LOG_CLEAR)
+  [PASS] Matrix chain optimum is 15125 (known textbook value)
+  [PASS] Optimal order beats left-to-right order
+  [PASS] Resource allocation equals brute force (54)
+  [PASS] All 6 analyst units are allocated
+
+=== MODULE 5: backtracking and branch and bound ===
+Minimum security zones (graph colouring) = 3, search nodes = 33
+   Zone 1: Firewall, Historian, HMI-2, EngWS, Switch-Field, RTU-2
+   Zone 2: Switch-Core, PLC-1, PLC-2, PLC-3, RTU-1, Gateway-R
+   Zone 3: HMI-1, PLC-4, Sensor-Hub
+Sum of subsets, 90 minute shift: [35, 20, 10, 25] (nodes visited 17 of 127 possible)
+TSP inspection round (7 stops): cost = 37
+   Switch-Core -> Historian -> HMI-1 -> PLC-1 -> PLC-3 -> PLC-4 -> RTU-1 -> Switch-Core
+   branch and bound visited 519 nodes; brute force has 720 complete tours
+
+Module 5 tests:
+  [PASS] Graph colouring: no two linked devices share a zone
+  [PASS] Two zones are not enough (plant contains triangles)
+  [PASS] Minimum number of zones is 3
+  [PASS] Subset of alerts fills the 90 minute shift exactly
+  [PASS] Subset search correctly reports no solution for target 7
+  [PASS] Branch and bound TSP cost equals brute force (37)
+  [PASS] Branch and bound explores fewer nodes than a full search tree
+
+=== SUMMARY: 41 passed, 0 failed ===

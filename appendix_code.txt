@@ -1,0 +1,198 @@
+// ===== Threat.java / BST.java =====
+/** Insert a signature; a repeated ID just adds to its frequency count. */
+public void insert(Threat t) {
+    if (root == null) { root = new Node(t); size++; return; }
+    Node cur = root;
+    while (true) {
+        comparisons++;
+        int c = t.signatureId.compareTo(cur.t.signatureId);
+        if (c == 0) { cur.t.frequencyCount += t.frequencyCount; return; }
+        if (c < 0) {
+            if (cur.left == null) { cur.left = new Node(t); size++; return; }
+            cur = cur.left;
+        } else {
+            if (cur.right == null) { cur.right = new Node(t); size++; return; }
+            cur = cur.right;
+        }
+    }
+}
+// ===== AVLTree.java =====
+private Node rotateRight(Node y) {
+    Node x = y.left;
+    y.left = x.right;
+    x.right = y;
+    update(y); update(x);
+    return x;
+}
+private Node rotateLeft(Node x) {
+    Node y = x.right;
+    x.right = y.left;
+    y.left = x;
+    update(x); update(y);
+    return y;
+}
+private Node insert(Node n, Threat t) {
+    if (n == null) { size++; return new Node(t); }
+    comparisons++;
+    int c = t.signatureId.compareTo(n.t.signatureId);
+    if (c < 0) n.left = insert(n.left, t);
+    else if (c > 0) n.right = insert(n.right, t);
+    else { n.t.frequencyCount += t.frequencyCount; return n; }
+
+    update(n);
+    int bal = balance(n);
+    if (bal > 1 && t.signatureId.compareTo(n.left.t.signatureId) < 0)  { rotLL++; return rotateRight(n); }          // LL
+    if (bal < -1 && t.signatureId.compareTo(n.right.t.signatureId) > 0) { rotRR++; return rotateLeft(n); }          // RR
+    if (bal > 1 && t.signatureId.compareTo(n.left.t.signatureId) > 0)  { rotLR++; n.left = rotateLeft(n.left); return rotateRight(n); }   // LR
+    if (bal < -1 && t.signatureId.compareTo(n.right.t.signatureId) < 0) { rotRL++; n.right = rotateRight(n.right); return rotateLeft(n); } // RL
+    return n;
+}
+// ===== MaxHeap.java =====
+public void insert(Threat t) {
+    a.add(t);
+    int i = a.size() - 1;
+    while (i > 0) {
+        int p = (i - 1) / 2;
+        if (!higher(a.get(i), a.get(p))) break;
+        swap(i, p);
+        i = p;
+    }
+}
+public Threat extractMax() {
+    if (a.isEmpty()) return null;
+    Threat top = a.get(0);
+    Threat last = a.remove(a.size() - 1);
+    if (!a.isEmpty()) { a.set(0, last); siftDown(0); }
+    return top;
+}
+private void siftDown(int i) {
+    int n = a.size();
+    while (true) {
+        int l = 2 * i + 1, r = l + 1, best = i;
+        if (l < n && higher(a.get(l), a.get(best))) best = l;
+        if (r < n && higher(a.get(r), a.get(best))) best = r;
+        if (best == i) return;
+        swap(i, best);
+        i = best;
+    }
+}
+// ===== NetworkGraph.java =====
+/** BFS order from s; hops[] receives the hop count (-1 = unreachable). */
+public List<Integer> bfs(int s, int[] hops) {
+    Arrays.fill(hops, -1);
+    List<Integer> order = new ArrayList<>();
+    ArrayDeque<Integer> q = new ArrayDeque<>();
+    hops[s] = 0; q.add(s);
+    while (!q.isEmpty()) {
+        int u = q.poll();
+        order.add(u);
+        for (Edge e : adj.get(u))
+            if (hops[e.to] == -1) { hops[e.to] = hops[u] + 1; q.add(e.to); }
+    }
+    return order;
+}
+/** Kruskal's minimum spanning forest. Returns total weight. */
+public int kruskal(List<String> out) {
+    List<int[]> edges = new ArrayList<>();
+    for (int u = 0; u < n(); u++)
+        for (Edge e : adj.get(u)) if (u < e.to) edges.add(new int[]{e.w, u, e.to});
+    edges.sort((x, y) -> x[0] - y[0]);
+    int[] parent = new int[n()];
+    for (int i = 0; i < n(); i++) parent[i] = i;
+    int total = 0;
+    for (int[] e : edges) {
+        int ru = find(parent, e[1]), rv = find(parent, e[2]);
+        if (ru != rv) {
+            parent[ru] = rv;
+            total += e[0];
+            out.add(names.get(e[1]) + "-" + names.get(e[2]) + "(" + e[0] + ")");
+        }
+    }
+    return total;
+}
+/** Dijkstra from s. dist[] and prev[] are filled in. */
+public void dijkstra(int s, int[] dist, int[] prev) {
+    Arrays.fill(dist, INF); Arrays.fill(prev, -1);
+    dist[s] = 0;
+    PriorityQueue<int[]> pq = new PriorityQueue<>((x, y) -> x[0] - y[0]);
+    pq.add(new int[]{0, s});
+    while (!pq.isEmpty()) {
+        int[] cur = pq.poll();
+        int u = cur[1];
+        if (cur[0] > dist[u]) continue;
+        for (Edge e : adj.get(u))
+            if (dist[u] + e.w < dist[e.to]) { dist[e.to] = dist[u] + e.w; prev[e.to] = u; pq.add(new int[]{dist[e.to], e.to}); }
+    }
+}
+// ===== DPModule.java =====
+/** 0/1 knapsack: pick mitigations within an effort budget for the largest total risk reduction. */
+public static int knapsack(int[] cost, int[] benefit, int budget, List<Integer> chosen) {
+    int n = cost.length;
+    int[][] dp = new int[n + 1][budget + 1];
+    for (int i = 1; i <= n; i++)
+        for (int w = 0; w <= budget; w++) {
+            dp[i][w] = dp[i - 1][w];
+            if (cost[i - 1] <= w) dp[i][w] = Math.max(dp[i][w], dp[i - 1][w - cost[i - 1]] + benefit[i - 1]);
+        }
+    int w = budget;
+    for (int i = n; i >= 1; i--)
+        if (dp[i][w] != dp[i - 1][w]) { chosen.add(0, i - 1); w -= cost[i - 1]; }
+    return dp[n][budget];
+}
+/** Longest common subsequence of two event logs. */
+public static List<String> lcs(String[] a, String[] b) {
+    int[][] dp = new int[a.length + 1][b.length + 1];
+    for (int i = 1; i <= a.length; i++)
+        for (int j = 1; j <= b.length; j++)
+            dp[i][j] = a[i - 1].equals(b[j - 1]) ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+    LinkedList<String> out = new LinkedList<>();
+    int i = a.length, j = b.length;
+    while (i > 0 && j > 0) {
+        if (a[i - 1].equals(b[j - 1])) { out.addFirst(a[i - 1]); i--; j--; }
+        else if (dp[i - 1][j] >= dp[i][j - 1]) i--;
+        else j--;
+    }
+    return out;
+}
+// ===== Backtrack.java =====
+private static boolean colourFrom(NetworkGraph g, int v, int m, int[] col) {
+    if (v == g.n()) return true;
+    for (int c = 1; c <= m; c++) {
+        nodes++;
+        boolean ok = true;
+        for (NetworkGraph.Edge e : g.adj.get(v)) if (col[e.to] == c) { ok = false; break; }
+        if (!ok) continue;
+        col[v] = c;
+        if (colourFrom(g, v + 1, m, col)) return true;
+        col[v] = 0;   // backtrack
+    }
+    return false;
+}
+private static boolean subset(int[] w, int i, int sum, int remaining, int target, List<Integer> chosen) {
+    nodes++;
+    if (sum == target) return true;
+    if (i == w.length || sum > target || sum + remaining < target) return false;   // pruning
+    chosen.add(w[i]);
+    if (subset(w, i + 1, sum + w[i], remaining - w[i], target, chosen)) return true;
+    chosen.remove(chosen.size() - 1);                                                // backtrack
+    return subset(w, i + 1, sum, remaining - w[i], target, chosen);
+}
+private static void explore(int[][] d, int[] minOut, int[] path, boolean[] used, int depth, int cost) {
+    nodes++;
+    int n = d.length, cur = path[depth - 1];
+    if (depth == n) {
+        int total = cost + d[cur][path[0]];
+        if (total < bestCost) { bestCost = total; bestTour = path.clone(); }
+        return;
+    }
+    // lower bound: every city still to leave contributes at least its cheapest outgoing link
+    int bound = cost + minOut[cur];
+    for (int i = 0; i < n; i++) if (!used[i]) bound += minOut[i];
+    if (bound >= bestCost) return;   // bound step: prune this branch
+    for (int next = 0; next < n; next++) {
+        if (used[next]) continue;
+        used[next] = true; path[depth] = next;
+        explore(d, minOut, path, used, depth + 1, cost + d[cur][next]);
+        used[next] = false;          // backtrack
+    }
+}
